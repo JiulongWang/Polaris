@@ -35,6 +35,7 @@ trait HasInstrType {
   def InstrPM = "b10110".U
   def InstrPB = "b10111".U
   def InstrPRD= "b11100".U
+  def InstrSNN= "b11110".U
 
   def isrfWen(instrType : UInt): Bool = instrType(2)
 }
@@ -60,20 +61,21 @@ object SrcType {
 }
 
 object FuType extends HasNutCoreConst {
-  def num = 5 + Polaris_Independent_Bru + Polaris_SIMDU_WAY_NUM
+  def num = 5 + Polaris_Independent_Bru + Polaris_SIMDU_WAY_NUM + 1
   def width = 4
   def alu = if(Polaris_Independent_Bru == 1){(Polaris_Independent_Bru + 3 + Polaris_SIMDU_WAY_NUM).U(width.W)}else{"b000".U}
   def lsu = if(Polaris_Independent_Bru == 1){(2+Polaris_SIMDU_WAY_NUM).U(width.W)}else{(3+Polaris_SIMDU_WAY_NUM).U(width.W)}
   def mdu = if(Polaris_Independent_Bru == 1){(3+Polaris_SIMDU_WAY_NUM).U(width.W)}else{(4+Polaris_SIMDU_WAY_NUM).U(width.W)}
   def csr = "b001".U
   def csrint = 1
-  def mou = "b1000".U
+  def mou = "b1001".U
   def alu1= if(Polaris_Independent_Bru == 1){(Polaris_Independent_Bru + 3 + Polaris_SIMDU_WAY_NUM + 1).U(width.W)}else{"b010".U}
   def bru = if(Polaris_Independent_Bru == 1){"b000".U}else{alu1}
   def simdu = simduint.U(width.W)
   def simduint = if(Polaris_SIMDU_WAY_NUM != 0){if(Polaris_Independent_Bru == 1){2}else{3}}else{0}
   def simdu1 = simdu1int.U(width.W)
   def simdu1int = if(Polaris_SIMDU_WAY_NUM != 0){if(Polaris_Independent_Bru == 1){3}else{4}}else{0}
+  def snnu = (num-1).U(width.W)
   def apply() = UInt(width.W)
 }
 
@@ -97,7 +99,8 @@ object Instructions extends HasInstrType with HasNutCoreParameter {
     RVPMInstr.table ++
     RVPBInstr.table ++
     RVPRDInstr.table 
-    }else Nil)
+    }else Nil) ++
+    RVSNNInstr.table 
 }
 
 object CInstructions extends HasInstrType with HasNutCoreParameter{

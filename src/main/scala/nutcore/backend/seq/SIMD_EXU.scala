@@ -205,7 +205,7 @@ class new_SIMD_EXU(implicit val p: NutCoreConfig) extends NutCoreModule with Has
     io.out(i).bits.commits:= DontCare
     io.in(i).ready := !io.in(i).valid || io.out(i).fire()
   }
-
+  
   //ALU
   val aluidx = FuType.alu
   
@@ -271,6 +271,23 @@ class new_SIMD_EXU(implicit val p: NutCoreConfig) extends NutCoreModule with Has
     io.out(FuType.simdu).bits.commits := simduOut
     io.in(simduidx).ready := simdu.io.in.ready
   }
+
+  //SNNU
+  val snnuidx = FuType.snnu
+  val snnu = Module(new SNNU)
+  val snnuOut = snnu.access(valid = io.in(snnuidx).valid, src1 = src1(snnuidx), src2 = src2(snnuidx), func = fuOpType(snnuidx))
+  snnu.io.out.ready := io.out(snnuidx).ready
+  snnu.io.dcIn := io.in(snnuidx).bits
+  snnu.io.flush := io.flush
+  io.out(snnuidx).bits.decode <> snnu.io.dcOut
+  io.out(snnuidx).bits.decode.ctrl.rfWen := snnu.io.dcOut.ctrl.rfWen
+  io.out(FuType.snnu).valid := snnu.io.out.valid
+  io.out(FuType.snnu).bits.commits := snnuOut
+  io.in(snnuidx).ready := snnu.io.in.ready
+  Debug("snnuidx %x \n",snnuidx)
+  // when(io.in(snnuidx).bits.ctrl.fuType === snnuidx){
+  //   printf("instr: %x, fuType: %d, src1: %x, src2: %x\n",snnu.io.dcIn.cf.instr, snnuidx, src1(snnuidx), src2(snnuidx))
+  // }
 
   //MDU
   val mduidx = FuType.mdu
@@ -418,7 +435,7 @@ class new_SIMD_EXU(implicit val p: NutCoreConfig) extends NutCoreModule with Has
       io.out(csridx).valid := false.B
     }
   }
-  //Debug
+  Debug()
   {
       for(i <- 0 to FuType.num-1){
         Debug("[SIMD_EXU] issue %x valid %x outvalid %x pc %x futype %x instrno %x outdata %x \n", i.U,io.in(i).valid, io.out(i).valid,io.in(i).bits.cf.pc, io.in(i).bits.ctrl.fuType, io.out(i).bits.decode.InstNo, io.out(i).bits.commits)

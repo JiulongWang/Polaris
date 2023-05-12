@@ -812,10 +812,10 @@ class new_Backend_inorder(implicit val p: NutCoreConfig) extends NutCoreModule {
         //}
       }
       Debug("i %x j %x operator_matched %x issue_matched %x isu.io.out.valid %x exu.io.in.ready %x isu.io.out.bits.ctrl.fuType === j.U %x MultiOperatorMatch(isu.io.out(i).bits.ctrl.fuType,j.U) %x \n",i.U,j.U,operator_matched,issue_matched,isu.io.out(i).valid,exu.io.in(j).ready,isu.io.out(i).bits.ctrl.fuType === j.U,MultiOperatorMatch(isu.io.out(i).bits.ctrl.fuType,j.U,isu.io.out(i).bits.ctrl.isBru))
+      Debug("match_operaotr(0)(%d) %x\n",j.U, match_operaotr(0)(j))
     }
   }
   exu_bits := exu_bits_next
-  //Debug("match_operaotr(0)(5) %x match_operator(0)(0) %x \n",match_operaotr(0)(5),match_operaotr(0)(0))
   
   when(reset.asBool || io.flush(0)){
     (0 to FuType.num-1).map(i => exu_valid(i) := false.B)
