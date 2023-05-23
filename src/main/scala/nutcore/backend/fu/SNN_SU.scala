@@ -248,7 +248,7 @@ class SUForward extends NutCoreModule{
     }
 
     for(i <- 0 until 4){
-        io.res(i) := Mux(io.isExp, res(i).asUInt, ts_res(i))
+        io.res(i) := Mux(io.isExp, res(i).asUInt, Mux(ts_res(i)(7), SignExt(ts_res(i), 16), ZeroExt(ts_res(i), 16)))
         Debug(io.in_valid &&io.isTdr, "[SNN_SU_SUF] ts0 %x ts1 %x res %x\n", ts0(i), ts1(i), io.res(i))
     }
     
