@@ -37,7 +37,7 @@ class Neuron(len: Int = 16) extends NutCoreModule{
             when(io.hasTs){
                 nu(i) := io.in(i)(7, 0)
                 
-                tmp_nu(i) := nu(i) + io.weight(i) - (nu(i) >> io.tau)
+                tmp_nu(i) := nu(i) + ((io.vr + io.weight(i)) >> io.tau) - (nu(i) >> io.tau)
                 nu_res(i) := tmp_nu(i) | (io.in(i)(15, 8) << (len/2).U)
                 
                 io.res(i) := nu_res(i)
@@ -45,7 +45,7 @@ class Neuron(len: Int = 16) extends NutCoreModule{
             }.otherwise{
                 nu(i) := io.in(i)
                 // tmp_nu(i) := (io.vr - nu(i) + io.weight(i)) * io.tau
-                nu_res(i) := nu(i) + io.weight(i) - (nu(i) >> io.tau)
+                nu_res(i) := nu(i) + ((io.vr + io.weight(i)) >> io.tau) - (nu(i) >> io.tau)
                 io.res(i) := nu_res(i)
                 Debug("[SNN_LNU]nu(%d) = %x weight = %x res(%d) = %x out(%d) = %x\n",i.U, nu(i), io.weight(i), i.U, nu_res(i), i.U, io.res(i))
             }

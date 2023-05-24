@@ -12,20 +12,8 @@ class SU_IO extends NutCoreBundle{
 
     val out = Decoupled(new Bundle{
         val res = Output(UInt(XLEN.W))
-        // val acc = Output(UInt(XLEN.W))
     })
 }
-
-// class SUMIO extends NutCoreBundle{
-//     val in = Input(Vec(4, UInt(16.W)))
-//     val masks = Input(Vec(4, UInt(16.W)))
-//     val acc = Input(UInt(64.W))
-//     val isSpop = Input(Bool())
-//     val isSum = Input(Bool())
-//     val hasAcc = Input(Bool())
-//     val res = Output(UInt(64.W))
-// }
-
 
 
 class CalcQ extends NutCoreModule{
@@ -41,8 +29,6 @@ class CalcQ extends NutCoreModule{
     val paraY = 2839.U
     val tmpQ = RegInit(0.U(32.W))
     val tmpY = RegInit(0.U(32.W))
-    // val mulqEn = RegInit(false.B)
-    // val mulyEn = RegInit(false.B)
 
     val s_idle :: s_calcQ :: s_calcY :: s_out :: Nil = Enum(4)
     val state = RegInit(s_idle)
@@ -51,32 +37,18 @@ class CalcQ extends NutCoreModule{
         is(s_idle){
           when(io.en){
             state := s_calcQ
-            // mulqEn := true.B
           }.otherwise{
             state := state
-            // mulqEn := false.B
           }
 
             
         }
         is(s_calcQ){
-            //  val mulq = Module(new BoothMultiplier(16))
-            //   mulq.io.en := mulqEn
-            //   mulq.io.Q := io.din
-            //   mulq.io.M := paraQ
  
-            // mulyEn := Mux(mulq.io.valid, true.B, false.B)
             state := s_calcY//Mux(mulq.io.valid, s_calcY, s_calcQ)
-            // mulqEn := Mux(mulq.io.valid, false.B, true.B)
             tmpQ := io.din * paraQ// Mux(mulq.io.valid, mulq.io.res,0.U)
         }
         is(s_calcY){
-            //  val muly = Module(new BoothMultiplier(16))
-            //   muly.io.en := mulyEn
-            //   muly.io.Q := tmpQ(23, 12)
-            //   muly.io.M := paraY
- 
-            // mulyEn := Mux(muly.io.valid, false.B, true.B)
             state := s_out// Mux(muly.io.valid, s_out, s_calcY)         
             tmpY := tmpQ(23, 12) * paraY// Mux(muly.io.valid, muly.io.res,0.U)
         }
@@ -134,8 +106,6 @@ class EXP extends NutCoreModule{
   val valid = RegInit(VecInit(Seq.fill(13)(false.B)))
   valid(0) := Mux(valid.reduce( _ || _), false.B, calcQ.io.valid)
 
-//   val (cnt, wrap) = Counter(~QEn && io.en, 7)
-
   for(i <- 0 to 12){
     when(valid(12)){
       x(i) := 0.S
@@ -173,30 +143,8 @@ class EXP extends NutCoreModule{
   io.valid := valid(12)
   io.dout := res << Q
 
-  // for (i <- 0 until 13){
-  //   Debug("[SNN exp] din: %x x(%d) %x y(%d) %x z(%d) %x Q %x Y %x valid(%d) %x\n",io.din.asUInt, i.U, x(i), i.U, y(i), i.U, z(i), Q, Y, i.U, valid(i))
-  // }
 }
 
-// class SUM extends NutCoreModule{
-//     val io = IO(new SUMIO)
-  
-//     val valids = WireInit(VecInit(Seq.fill(4)(0.U(16.W))))
-//     for(i <- 0 until 4){
-//         valids(i) := Mux(io.masks(i) === 1.U, io.in(i), 0.U)
-//     }
-
-//     val tot = valids.reduce(_ + _)
-
-//     when(io.isSpop && io.hasAcc){
-//         io.res := tot + io.acc
-//     }.elsewhen(io.isSpop && !io.hasAcc || io.isSum){
-//         io.res := tot
-//     }.otherwise{
-//         io.res := 0.U
-//     }
-
-// }
 
 class SUForward extends NutCoreModule{
     val io = IO(new Bundle{
@@ -234,10 +182,10 @@ class SUForward extends NutCoreModule{
         exp1.io.din := Mux(io.src1(1)(15), io.src1(1).asSInt, io.src1(1).zext)
         exp2.io.din := Mux(io.src1(2)(15), io.src1(2).asSInt, io.src1(2).zext)
         exp3.io.din := Mux(io.src1(3)(15), io.src1(3).asSInt, io.src1(3).zext)
-        exp0.io.en := io.in_valid // && io.src2(0) === 1.U 
-        exp1.io.en := io.in_valid // && io.src2(1) === 1.U
-        exp2.io.en := io.in_valid // && io.src2(2) === 1.U
-        exp3.io.en := io.in_valid // && io.src2(3) === 1.U
+        exp0.io.en := io.in_valid 
+        exp1.io.en := io.in_valid 
+        exp2.io.en := io.in_valid 
+        exp3.io.en := io.in_valid 
         res(0) := Mux(exp3.io.valid, exp3.io.dout, res(0))
         res(1) := Mux(exp2.io.valid, exp2.io.dout, res(1))
         res(2) := Mux(exp1.io.valid, exp1.io.dout, res(2))
@@ -260,20 +208,11 @@ class SU(len: Int = 16) extends NutCoreModule{
     val (src1, src2, acc) = (io.in.bits.SCtrl.DIn1, io.in.bits.SCtrl.DIn2, io.in.bits.SCtrl.SRF4(SRFAddr.ACC))
 
     val suf = Module(new SUForward)
-    // val sum = Module(new SUM)
     suf.io.src1 := src1
     suf.io.src2 := src2
     suf.io.isTdr := io.in.bits.SCtrl.isTdr
     suf.io.isExp := io.in.bits.SCtrl.isExp
     suf.io.in_valid := io.in.valid
-
-    
-    // sum.io.in := src1
-    // sum.io.masks := src2
-    // sum.io.isSpop := io.in.bits.SCtrl.isSpop
-    // sum.io.acc := acc
-    // sum.io.hasAcc := io.in.bits.SCtrl.hasAcc
-    // sum.io.isSum := io.in.bits.SCtrl.isSum
 
     val res = WireInit(0.U(XLEN.W))
     val bp_valid = WireInit(false.B)
@@ -292,26 +231,7 @@ class SU(len: Int = 16) extends NutCoreModule{
      res := l.dropRight(1).reduce(Cat(_, _))
      io.out.bits.res := res 
      bp_valid := io.in.valid
-    // }.elsewhen(io.in.bits.SCtrl.isBpm || io.in.bits.SCtrl.isSpop && io.in.bits.SCtrl.hasAcc){
-    //   val ksiw03 = RegInit(VecInit(Seq.fill(4)(0.U(16.W))))
 
-    //   for(i <- 0 until XLEN/len){
-    //     ksiw03(i) := Mux(src2(i) === 1.U, src1(i), 0.U(16.W))
-    //   }
-
-    //   res := ksiw03.reduce(_ + _) + acc
-    //   bp_valid := io.in.valid
-      
-
-    // }.elsewhen(io.in.bits.SCtrl.isSum){
-    //   val ksiw03 = RegInit(VecInit(Seq.fill(4)(0.U(16.W))))
-
-    //   for(i <- 0 until XLEN/len){
-    //     ksiw03(i) := Mux(src2(i) === 1.U, src1(i), 0.U(16.W))
-    //   }
-
-    //   res := Mux(io.in.bits.SCtrl.hasAcc, ksiw03.reduce(_ + _) + acc, ksiw03.reduce(_ + _))
-    //   bp_valid := io.in.valid
 
     }.otherwise{
      res := suf.io.res.reduce(Cat(_, _))
@@ -321,5 +241,4 @@ class SU(len: Int = 16) extends NutCoreModule{
     io.out.bits.res := res 
     io.in.ready := io.out.ready
     io.out.valid := Mux(io.in.bits.SCtrl.isTdr || io.in.bits.SCtrl.isExp, suf.io.valid, bp_valid)
-    // io.out.bits.acc := Mux(io.in.bits.SCtrl.isSum, res, acc)
 }
