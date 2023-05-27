@@ -48,7 +48,7 @@ class SNNU extends NutCoreModule{
     // output connection
     io.in.ready := !valid || io.FirstStageFire// Mux(isISU(func), !valid, Mux(isSU(func), SU.io.in.ready, LNU.io.in.ready))
     io.out.bits := Mux(isISU(funct3), SNNISU.io.res, Mux(isSU(funct3), SU.io.out.bits.res, LNU.io.out.bits.res))
-    io.dcOut := io.dcIn
+    io.dcOut := Mux(isISU(funct3), SNNISU.io.dcOut, Mux(isSU(funct3), SU.io.out.bits.dcOut, LNU.io.out.bits.dcOut))// io.dcIn
     io.FirstStageFire := valid && ((LNU.io.in.ready && !isSU(funct3) && !isISU(funct3)) || (SU.io.in.ready && isSU(funct3))) 
     LNU.io.out.ready := Mux(isSU(funct3), false.B, io.out.ready)
     SU.io.out.ready := Mux(isSU(funct3), io.out.ready, false.B)
@@ -59,8 +59,8 @@ class SNNU extends NutCoreModule{
     SNNISU.io.valid := valid
 
     // connect SNNISU and LNU
-    val LNU_bits_next = Wire(new Bundle{val SCtrl = new SCtrlIO})
-    val LNU_bits      = RegInit(0.U.asTypeOf(new Bundle{val SCtrl = new SCtrlIO}))
+    val LNU_bits_next = Wire(new Bundle{val SCtrl = new SCtrlIO; val dcIn = new DecodeIO})
+    val LNU_bits      = RegInit(0.U.asTypeOf(new Bundle{val SCtrl = new SCtrlIO; val dcIn = new DecodeIO}))
     LNU_bits_next := LNU_bits
     val LNU_valid = RegInit(0.U.asTypeOf(Bool()))
     val LNU_valid_next = Wire(Bool())
@@ -69,6 +69,7 @@ class SNNU extends NutCoreModule{
     when(valid && LNU.io.in.ready && !isSU(funct3) && !isISU(funct3)){
         LNU_valid_next := true.B
         LNU_bits_next.SCtrl := SNNISU.io.SCtrl
+        LNU_bits_next.dcIn := SNNISU.io.dcOut
     }
     when(io.flush){LNU_valid_next := false.B}
     LNU_bits := LNU_bits_next
@@ -78,8 +79,8 @@ class SNNU extends NutCoreModule{
     
     
     // connect SNNISU and SU
-    val SU_bits_next = Wire(new Bundle{val SCtrl = new SCtrlIO})
-    val SU_bits      = RegInit(0.U.asTypeOf(new Bundle{val SCtrl = new SCtrlIO}))
+    val SU_bits_next = Wire(new Bundle{val SCtrl = new SCtrlIO; val dcIn = new DecodeIO})
+    val SU_bits      = RegInit(0.U.asTypeOf(new Bundle{val SCtrl = new SCtrlIO; val dcOut = new DecodeIO}))
     SU_bits_next := SU_bits
     val SU_valid    = RegInit(0.U.asTypeOf(Bool()))
     val SU_valid_next = Wire(Bool())
@@ -88,6 +89,7 @@ class SNNU extends NutCoreModule{
     when(valid && SU.io.in.ready && isSU(funct3)){
         SU_valid_next := true.B
         SU_bits_next.SCtrl := SNNISU.io.SCtrl
+        SU_bits_next.dcIn := SNNISU.io.dcOut
     }
     when(io.flush){SU_valid_next := false.B}
     SU_bits := SU_bits_next

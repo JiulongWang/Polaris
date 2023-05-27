@@ -273,21 +273,43 @@ class new_SIMD_EXU(implicit val p: NutCoreConfig) extends NutCoreModule with Has
   }
 
   //SNNU
-  val snnuidx = FuType.snnu
-  val snnu = Module(new SNNU)
-  val snnuOut = snnu.access(valid = io.in(snnuidx).valid, src1 = src1(snnuidx), src2 = src2(snnuidx), func = fuOpType(snnuidx))
-  snnu.io.out.ready := io.out(snnuidx).ready
-  snnu.io.dcIn := io.in(snnuidx).bits
-  snnu.io.flush := io.flush
-  io.out(snnuidx).bits.decode <> snnu.io.dcOut
-  io.out(snnuidx).bits.decode.ctrl.rfWen := snnu.io.dcOut.ctrl.rfWen
-  io.out(FuType.snnu).valid := snnu.io.out.valid
-  io.out(FuType.snnu).bits.commits := snnuOut
-  io.in(snnuidx).ready := snnu.io.in.ready
-  Debug("snnuidx %x \n",snnuidx)
-  // when(io.in(snnuidx).bits.ctrl.fuType === snnuidx){
-  //   printf("instr: %x, fuType: %d, src1: %x, src2: %x\n",snnu.io.dcIn.cf.instr, snnuidx, src1(snnuidx), src2(snnuidx))
-  // }
+  if(Polaris_SIMDU_WAY_NUM == 2){
+    val snnuidx = FuType.snnu
+    val snnu1idx = FuType.snnu1
+    val snnu = Module(new SNNU_2WAY)
+    val (snnuOut,snnu1Out) = snnu.access(valid0 = io.in(snnuidx).valid, src01 = src1(snnuidx), src02 = src2(snnuidx), func0 = fuOpType(snnuidx),valid1 = io.in(snnu1idx).valid, src11 = src1(snnu1idx), src12 = src2(snnu1idx), func1 = fuOpType(snnu1idx))
+    snnu.io.dcIn(0) := io.in(snnuidx).bits
+    snnu.io.dcIn(1) := io.in(snnu1idx).bits
+    snnu.io.out(0).ready := io.out(snnuidx).ready
+    snnu.io.out(1).ready := io.out(snnu1idx).ready
+    snnu.io.flush := io.flush
+    
+    io.out(snnuidx).bits.decode <> snnu.io.dcOut(0)
+    io.out(snnu1idx).bits.decode <> snnu.io.dcOut(1)
+    io.out(snnuidx).bits.decode.ctrl.rfWen := snnu.io.dcOut(0).ctrl.rfWen 
+    io.out(snnu1idx).bits.decode.ctrl.rfWen:= snnu.io.dcOut(1).ctrl.rfWen
+    io.out(FuType.snnu).valid := snnu.io.out(0).valid
+    io.out(FuType.snnu1).valid := snnu.io.out(1).valid
+    io.out(FuType.snnu).bits.commits := snnuOut
+    io.out(FuType.snnu1).bits.commits := snnu1Out
+    io.in(snnuidx).ready  := snnu.io.in(0).ready
+    io.in(snnu1idx).ready := snnu.io.in(1).ready
+  }else{
+    val snnuidx = FuType.snnu
+    val snnu = Module(new SNNU)
+    val snnuOut = snnu.access(valid = io.in(snnuidx).valid, src1 = src1(snnuidx), src2 = src2(snnuidx), func = fuOpType(snnuidx))
+    snnu.io.out.ready := io.out(snnuidx).ready
+    snnu.io.dcIn := io.in(snnuidx).bits
+    snnu.io.flush := io.flush
+    io.out(snnuidx).bits.decode <> snnu.io.dcOut
+    io.out(snnuidx).bits.decode.ctrl.rfWen := snnu.io.dcOut.ctrl.rfWen
+    io.out(FuType.snnu).valid := snnu.io.out.valid
+    io.out(FuType.snnu).bits.commits := snnuOut
+    io.in(snnuidx).ready := snnu.io.in.ready
+    Debug("snnuidx %x \n",snnuidx)
+  }
+
+
 
   //MDU
   val mduidx = FuType.mdu

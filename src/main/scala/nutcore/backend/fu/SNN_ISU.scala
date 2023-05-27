@@ -12,7 +12,7 @@ object SRFAddr {
     def ACC = "b11".U
 }
 
-class SCtrlIO(len: Int = 16) extends NutCoreBundle{
+class SCtrlIO extends NutCoreBundle with HasNutCoreConst{
     val isNup = Output(Bool())
     val isBpo = Output(Bool())
     val isExp = Output(Bool())
@@ -21,18 +21,19 @@ class SCtrlIO(len: Int = 16) extends NutCoreBundle{
     val isSvr = Output(Bool())
     val hasTs = Output(Bool())
     val hasAcc = Output(Bool())
-    val DIn1 = Output(Vec(XLEN/len, UInt(len.W)))
-    val DIn2 = Output(Vec(XLEN/len, UInt(len.W)))
-    val SRF4 = Output(Vec(XLEN/len, UInt(XLEN.W)))
+    val DIn1 = Output(Vec(4, UInt(16.W)))
+    val DIn2 = Output(Vec(4, UInt(16.W)))
+    val SRF4 = Output(Vec(4, UInt(64.W))) 
 }
 
 class SNNISU(len: Int = 16) extends NutCoreModule{
     val io = IO(new Bundle{
         val valid = Input(Bool())
         val dcIn = Flipped(new DecodeIO) // input
-        val SCtrl= new SCtrlIO(len) // output
+        val SCtrl= new SCtrlIO // output
         val res = Output(UInt(XLEN.W))
         val sumValid = Output(Bool())
+        val dcOut = new DecodeIO
     })
 
     val src1  = io.dcIn.data.src1
@@ -40,6 +41,8 @@ class SNNISU(len: Int = 16) extends NutCoreModule{
     val func  = io.dcIn.ctrl.fuOpType
 
     val srf = new SRegFile
+
+    io.dcOut := io.dcIn
 
     io.SCtrl.isNup  := func === SNNOpType.nup
     io.SCtrl.isBpo  := func === SNNOpType.bpo 

@@ -761,7 +761,8 @@ class new_Backend_inorder(implicit val p: NutCoreConfig) extends NutCoreModule {
   def MultiOperatorMatch(futype1:UInt,futype2:UInt,isBru:Bool):Bool = if(Polaris_SIMDU_WAY_NUM == 2){
                                                                         ((futype1 === FuType.alu) && (futype2 ===FuType.alu || futype2 === FuType.alu1) && !isBru
                                                                         ||(futype1 === FuType.simdu) && (futype2 ===FuType.simdu || futype2 === FuType.simdu1)
-                                                                        ||(futype1 === FuType.mou) && (futype2 ===FuType.csr))
+                                                                        ||(futype1 === FuType.mou) && (futype2 ===FuType.csr)
+                                                                        ||(futype1 === FuType.snnu) && (futype2 === FuType.snnu || futype2 === FuType.snnu1))
                                                                       }else{
                                                                         ((futype1 === FuType.alu) && (futype2 ===FuType.alu || futype2 === FuType.alu1) && !isBru
                                                                         ||(futype1 === FuType.mou) && (futype2 ===FuType.csr))
@@ -810,9 +811,11 @@ class new_Backend_inorder(implicit val p: NutCoreConfig) extends NutCoreModule {
           match_operaotr(i)(j) := true.B 
           exu_bits_next(j).ctrl.fuType := j.U
         //}
+        Debug("issu %x fu %x\n", i.U, j.U)
       }
+      Debug("isu.io(%d).out.bits.ctrl.fuType %x\n", i.U, isu.io.out(i).bits.ctrl.fuType )
       Debug("i %x j %x operator_matched %x issue_matched %x isu.io.out.valid %x exu.io.in.ready %x isu.io.out.bits.ctrl.fuType === j.U %x MultiOperatorMatch(isu.io.out(i).bits.ctrl.fuType,j.U) %x \n",i.U,j.U,operator_matched,issue_matched,isu.io.out(i).valid,exu.io.in(j).ready,isu.io.out(i).bits.ctrl.fuType === j.U,MultiOperatorMatch(isu.io.out(i).bits.ctrl.fuType,j.U,isu.io.out(i).bits.ctrl.isBru))
-      Debug("match_operaotr(0)(%d) %x\n",j.U, match_operaotr(0)(j))
+      Debug("match_operaotr(%d)(%d) %x\n",i.U, j.U, match_operaotr(i)(j))
     }
   }
   exu_bits := exu_bits_next

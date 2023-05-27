@@ -7,11 +7,13 @@ import utils._
 
 class SU_IO extends NutCoreBundle{
     val in = Flipped(Decoupled(new Bundle{
+        val dcIn = new DecodeIO
         val SCtrl = new SCtrlIO
     }))
 
     val out = Decoupled(new Bundle{
         val res = Output(UInt(XLEN.W))
+        val dcOut = new DecodeIO
     })
 }
 
@@ -239,6 +241,7 @@ class SU(len: Int = 16) extends NutCoreModule{
     Debug(io.in.bits.SCtrl.isTdr, "[SNN_SU] valid %b isTdr %b \n", io.in.valid, io.in.bits.SCtrl.isTdr)
     Debug("[SNN_SU] src1 %x src2 %x res %x io.res %x invalid %b outvalid %b\n", src1.reduce(Cat(_,_)), src2.reduce(Cat(_,_)), res, io.out.bits.res, io.in.valid, io.out.valid)
     io.out.bits.res := res 
-    io.in.ready := io.out.ready
+    io.in.ready := !io.in.valid // Mux(io.in.bits.SCtrl.isTdr || io.in.bits.SCtrl.isExp, !suf.io.valid, !bp_valid)
     io.out.valid := Mux(io.in.bits.SCtrl.isTdr || io.in.bits.SCtrl.isExp, suf.io.valid, bp_valid)
+    io.out.bits.dcOut := Mux(suf.io.valid || bp_valid, io.in.bits.dcIn, 0.U.asTypeOf(new DecodeIO))
 }

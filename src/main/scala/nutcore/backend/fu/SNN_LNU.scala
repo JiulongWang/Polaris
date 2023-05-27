@@ -17,11 +17,13 @@ class NeuronIO(len: Int = 16) extends NutCoreBundle{
 
 class LNU_IO extends NutCoreBundle{
     val in = Flipped(Decoupled(new Bundle{
+        val dcIn = new DecodeIO
         val SCtrl = new SCtrlIO
     }))
 
     val out = Decoupled(new Bundle{
         val res = Output(UInt(XLEN.W))
+        val dcOut = new DecodeIO
     })
 }
 
@@ -74,5 +76,6 @@ class LNU extends NutCoreModule{
     io.in.ready := !io.in.valid
     io.out.valid := io.in.valid
 
+    io.out.bits.dcOut := io.in.bits.dcIn
     Debug(io.in.bits.SCtrl.isNup, "[SNN_LNU] hasTs: %b, n0: %x n1: %x n2: %x n3: %x\n", io.in.bits.SCtrl.hasTs, io.in.bits.SCtrl.DIn1(0), io.in.bits.SCtrl.DIn1(1), io.in.bits.SCtrl.DIn1(2), io.in.bits.SCtrl.DIn1(3))
 }
