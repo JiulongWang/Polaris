@@ -61,7 +61,8 @@ object SrcType {
 }
 
 object FuType extends HasNutCoreConst {
-  def num = 5 + Polaris_Independent_Bru + Polaris_SIMDU_WAY_NUM + 2
+  def addition = if(Polaris_SIMDU_WAY_NUM == 2){2}else{1}
+  def num = 5 + Polaris_Independent_Bru + Polaris_SIMDU_WAY_NUM + addition
   def width = 4
   def alu = if(Polaris_Independent_Bru == 1){(Polaris_Independent_Bru + 3 + Polaris_SIMDU_WAY_NUM).U(width.W)}else{"b000".U}
   def lsu = if(Polaris_Independent_Bru == 1){(2+Polaris_SIMDU_WAY_NUM).U(width.W)}else{(3+Polaris_SIMDU_WAY_NUM).U(width.W)}
@@ -75,7 +76,7 @@ object FuType extends HasNutCoreConst {
   def simduint = if(Polaris_SIMDU_WAY_NUM != 0){if(Polaris_Independent_Bru == 1){2}else{3}}else{0}
   def simdu1 = simdu1int.U(width.W)
   def simdu1int = if(Polaris_SIMDU_WAY_NUM != 0){if(Polaris_Independent_Bru == 1){3}else{4}}else{0}
-  def snnu = (num-2).U(width.W)
+  def snnu = if(Polaris_SIMDU_WAY_NUM == 2){(num-2).U(width.W)}else{(num-1).U(width.W)}
   def snnu1 = if(Polaris_SIMDU_WAY_NUM == 2){(num-1).U(width.W)}else{0.U}
   def apply() = UInt(width.W)
 }

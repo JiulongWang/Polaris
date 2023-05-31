@@ -80,7 +80,7 @@ class SNNU extends NutCoreModule{
     
     // connect SNNISU and SU
     val SU_bits_next = Wire(new Bundle{val SCtrl = new SCtrlIO; val dcIn = new DecodeIO})
-    val SU_bits      = RegInit(0.U.asTypeOf(new Bundle{val SCtrl = new SCtrlIO; val dcOut = new DecodeIO}))
+    val SU_bits      = RegInit(0.U.asTypeOf(new Bundle{val SCtrl = new SCtrlIO; val dcIn = new DecodeIO}))
     SU_bits_next := SU_bits
     val SU_valid    = RegInit(0.U.asTypeOf(Bool()))
     val SU_valid_next = Wire(Bool())
