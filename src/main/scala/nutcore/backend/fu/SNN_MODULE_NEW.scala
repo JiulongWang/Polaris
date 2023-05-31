@@ -108,12 +108,15 @@ class LNU_NEW extends NutCoreModule{
             }
         }
     }.elsewhen(io.in.bits.SCtrl.isSvr){
+        for (i <- 1 to 2){
+            nu_res(i) := 0.U
+        }
         nu_res(0) := 1.U
     }.elsewhen(io.in.bits.SCtrl.isSum){
         val acc = io.in.bits.SCtrl.SRF4(SRFAddr.ACC)
         for(i <- 0 until XLEN/16){
           ksiw03(i) := Mux(io.in.bits.SCtrl.DIn2(i) === 1.U, io.in.bits.SCtrl.DIn1(i), 0.U(16.W))
-          Debug("[SNNISU] k(%d) %x\n", i.U, ksiw03(i))
+          Debug("[LNU] k(%d) %x\n", i.U, ksiw03(i))
         }
 
         sumres := Mux(io.in.bits.SCtrl.hasAcc && RegNext(io.in.valid), ksiw03.reduce(_ + _) + acc, ksiw03.reduce(_ + _))
@@ -121,8 +124,8 @@ class LNU_NEW extends NutCoreModule{
     io.out.bits.res := Mux(io.in.bits.SCtrl.isSum, sumres, nu_res.reverse.reduce(Cat(_,_))) 
 
 
-    io.in.ready := !io.in.valid
-    io.out.valid :=  io.in.valid
+    io.in.ready := !io.in.valid || io.out.fire()
+    io.out.valid :=  io.in.valid 
 
     io.out.bits.dcOut :=  io.in.bits.dcIn
     Debug("[LNU] READY %x OUTVALID %x INVALID %x RES %x\n", io.in.ready, io.out.valid, io.in.valid, io.out.bits.res)

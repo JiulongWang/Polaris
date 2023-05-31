@@ -236,7 +236,7 @@ class SU(len: Int = 16) extends NutCoreModule{
 
 
     }.otherwise{
-     res := suf.io.res.reduce(Cat(_, _))
+     res := suf.io.res.reverse.reduce(Cat(_, _))
     }
     Debug(io.in.bits.SCtrl.isTdr, "[SNN_SU] valid %b isTdr %b \n", io.in.valid, io.in.bits.SCtrl.isTdr)
     Debug("[SNN_SU] src1 %x src2 %x res %x io.res %x invalid %b outvalid %b\n", src1.reduce(Cat(_,_)), src2.reduce(Cat(_,_)), res, io.out.bits.res, io.in.valid, io.out.valid)

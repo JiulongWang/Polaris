@@ -56,7 +56,6 @@ class SNNU_2WAY extends NutCoreModule{
     SRF.io.sumvalid := LNU0.io.out.valid && LNU0.io.out.bits.dcOut.ctrl.fuOpType === SNNOpType.sum || LNU1.io.out.valid && LNU1.io.out.bits.dcOut.ctrl.fuOpType === SNNOpType.sum
 
 
-
     // Debug("IN0READY %x VALID0 %x\n", valid0, SRF.io.in.ready)
     // Debug("IN1READY %x VALID1 %x\n", valid0, SRF.io.in.ready)
 
@@ -81,13 +80,12 @@ class SNNU_2WAY extends NutCoreModule{
     SNNISU1.io.srf4In := SRF.io.SRF4
 
     // // init SRF
-    // val SRF_bits_next = Wire(new Bundle{val dcIn = new DecodeIO;val SCtrl = new SCtrlIO})
-    // val SRF_bits      = RegInit(0.U.asTypeOf(new Bundle{val dcIn = new DecodeIO;val SCtrl = new SCtrlIO}))
-    // SRF_bits_next := SRF_bits
-    // val SRF_valid = RegInit(0.U.asTypeOf(Bool()))
-    // val SRF_valid_next = Wire(Bool())
-    // SRF_valid_next:= SRF_valid
-    // when(SRF.io.out.fire()){SRF_valid_next := false.B}
+    // val SRF0_bits_next = Wire(new Bundle{val dcIn = new DecodeIO;val SCtrl = new SCtrlIO})
+    // val SRF0_bits      = RegInit(0.U.asTypeOf(new Bundle{val dcIn = new DecodeIO;val SCtrl = new SCtrlIO}))
+    // SRF0_bits_next := SRF0_bits
+    // val SRF0_valid = RegInit(0.U.asTypeOf(Bool()))
+    // val SRF0_valid_next = Wire(Bool())
+    // SRF0_valid_next:= SRF_valid
 
     //init LNUs
     val LNU0_bits_next = Wire(new Bundle{val dcIn = new DecodeIO;val SCtrl = new SCtrlIO})
@@ -122,6 +120,7 @@ class SNNU_2WAY extends NutCoreModule{
     val SU1_valid_next = Wire(Bool())
     SU1_valid_next:= SU1_valid
     when(SU1.io.out.fire()){SU1_valid_next := false.B}
+    Debug("[SNNU] LNU0FIRE %x LNU1FIRE %x SU0FIRE %x SU1FIRE %x\n", LNU0.io.out.fire(), LNU1.io.out.fire(), SU0.io.out.fire(), SU1.io.out.fire())
 
     //connect 2 way in
     val match_operator = WireInit(0.U.asTypeOf(Vec(4,Bool())))
@@ -134,7 +133,7 @@ class SNNU_2WAY extends NutCoreModule{
             LNU0_bits_next.dcIn := io.dcIn(firstidx)
             LNU0_bits_next.SCtrl    := Mux(firstidx === 0.U,SNNISU0.io.SCtrl,SNNISU1.io.SCtrl)
             io.FirstStageFire(firstidx) := true.B
-        }.elsewhen(LNU1.io.in.ready){
+        }.elsewhen(LNU1.io.in.ready && LNU0_valid){
             match_operator(1) := true.B
             LNU1_valid_next := true.B
             LNU1_bits_next.dcIn := io.dcIn(firstidx)
@@ -148,7 +147,7 @@ class SNNU_2WAY extends NutCoreModule{
             SU0_bits_next.dcIn := io.dcIn(firstidx)
             SU0_bits_next.SCtrl    := Mux(firstidx === 0.U,SNNISU0.io.SCtrl,SNNISU1.io.SCtrl)
             io.FirstStageFire(firstidx) := true.B
-        }.elsewhen(SU1.io.in.ready){
+        }.elsewhen(SU1.io.in.ready && SU0_valid){
             match_operator(3) := true.B
             SU1_valid_next := true.B
             SU1_bits_next.dcIn := io.dcIn(firstidx)
@@ -162,7 +161,7 @@ class SNNU_2WAY extends NutCoreModule{
           LNU0_bits_next.dcIn := io.dcIn(secondidx)
           LNU0_bits_next.SCtrl    := Mux(secondidx === 0.U,SNNISU0.io.SCtrl,SNNISU1.io.SCtrl)
           io.FirstStageFire(secondidx) := true.B
-        }.elsewhen(LNU1.io.in.ready && !match_operator(1)){
+        }.elsewhen(LNU1.io.in.ready && !match_operator(1) && LNU0_valid){
           LNU1_valid_next := true.B
           LNU1_bits_next.dcIn := io.dcIn(secondidx)
           LNU1_bits_next.SCtrl    := Mux(secondidx === 0.U,SNNISU0.io.SCtrl,SNNISU1.io.SCtrl)
@@ -174,14 +173,14 @@ class SNNU_2WAY extends NutCoreModule{
             SU0_bits_next.dcIn := io.dcIn(secondidx)
             SU0_bits_next.SCtrl    := Mux(secondidx === 0.U,SNNISU0.io.SCtrl,SNNISU1.io.SCtrl)
             io.FirstStageFire(secondidx) := true.B
-        }.elsewhen(SU1.io.in.ready && !match_operator(3)){
+        }.elsewhen(SU1.io.in.ready && !match_operator(3) && SU0_valid){
             SU1_valid_next := true.B
             SU1_bits_next.dcIn := io.dcIn(secondidx)
             SU1_bits_next.SCtrl    := Mux(secondidx === 0.U,SNNISU0.io.SCtrl,SNNISU1.io.SCtrl)
             io.FirstStageFire(secondidx) := true.B
         }
     }
-    Debug("FIRSTIDX %x SECONDIDX %x\n", firstidx, secondidx)
+    Debug("FIRSTIDX %x SECONDIDX %x FIRSTIDXVALID %x SECONDIDXVALID %x\n", firstidx, secondidx, io.in(firstidx).valid, io.in(secondidx).valid)
     Debug(io.in(0).valid, "[SNNU] ISU0ISSVR %x ISU0ISNUP %x ISU0ISBPO %x ISU0ISEXP %x ISU0ISTDR %x\n", SNNISU0.io.SCtrl.isSvr, SNNISU0.io.SCtrl.isNup, SNNISU0.io.SCtrl.isBpo, SNNISU0.io.SCtrl.isExp, SNNISU0.io.SCtrl.isTdr)
     Debug(io.in(1).valid, "[SNNU] ISU1ISSVR %x ISU1ISNUP %x ISU1ISBPO %x ISU1ISEXP %x ISU1ISTDR %x\n", SNNISU1.io.SCtrl.isSvr, SNNISU1.io.SCtrl.isNup, SNNISU1.io.SCtrl.isBpo, SNNISU1.io.SCtrl.isExp, SNNISU1.io.SCtrl.isTdr)
     when(io.flush){LNU0_valid_next := false.B}
@@ -210,70 +209,129 @@ class SNNU_2WAY extends NutCoreModule{
     // SRF.io.in.valid := SRF_valid
     // SRF.io.in.bits := SRF_bits
 
-    //connect 2 way out 
-    val commit_operator = WireInit(0.U.asTypeOf(Vec(4,Bool())))
-    val winner0 = Mux(LNU0.io.out.valid,Mux(LNU1.io.out.valid,Mux(notafter(LNU0.io.out.bits.dcOut.InstNo,LNU1.io.out.bits.dcOut.InstNo,LNU0.io.out.bits.dcOut.InstFlag,LNU1.io.out.bits.dcOut.InstFlag),0.U,1.U),0.U),1.U)
-    val winner1 = Mux(SU0.io.out.valid,Mux(SU1.io.out.valid,Mux(notafter(SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag),2.U,3.U),2.U),3.U)
-    // val winner4 = 5.U
-    val InstNo0 = Mux(winner0 === 0.U,LNU0.io.out.bits.dcOut.InstNo,LNU1.io.out.bits.dcOut.InstNo)
-    val InstNo1 = Mux(winner1 === 2.U,SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo)
-    // val InstNo4 = SRF.io.out.bits.dcOut.InstNo
-    val InstFlag0 = Mux(winner0 === 0.U,LNU0.io.out.bits.dcOut.InstFlag,LNU1.io.out.bits.dcOut.InstFlag)
-    val InstFlag1 = Mux(winner1 === 2.U,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag)
-    // val InstFlag4 = SRF.io.out.bits.dcOut.InstFlag
-    val outvalid0 = Mux(winner0 === 0.U,LNU0.io.out.valid,LNU1.io.out.valid)
-    val outvalid1 = Mux(winner1 === 2.U,SU0.io.out.valid,SU1.io.out.valid)
-    // val outvalid4 = SRF.io.out.valid
-    val king  = Mux(outvalid0,Mux(outvalid1,Mux(notafter(InstNo0,InstNo1,InstFlag0,InstFlag1),winner0,winner1),winner0),winner1) 
-    // Mux(outvalid0,Mux(outvalid1,Mux(outvalid4,Mux(notafter(InstNo4, InstNo1, InstFlag4, InstFlag1),Mux(notafter(InstNo4, InstNo0, InstFlag4, InstFlag0),winner4,Mux(notafter(InstNo0,InstNo1,InstFlag0,InstFlag1), winner0, winner1)),Mux(notafter(InstNo0,InstNo1,InstFlag0,InstFlag1), winner0, winner1)),Mux(notafter(InstNo0,InstNo1,InstFlag0,InstFlag1),winner0,winner1)),winner0),winner1) 
-                   //Mux(outvalid0,Mux(outvalid1,Mux(notafter(InstNo0,InstNo1,InstFlag0,InstFlag1),winner0,winner1),winner0),winner1)
-    val queen0= Mux(king === winner0,winner1,winner0)
-    val queen1= Mux(king === winner0,Mux(king === 0.U,1.U,0.U),Mux(king === 2.U,3.U,2.U))
-    val InstNo2 = Mux(queen0 === 0.U,LNU0.io.out.bits.dcOut.InstNo,Mux(queen0 === 1.U,LNU1.io.out.bits.dcOut.InstNo,Mux(queen0 === 2.U,SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo)))
-    val InstNo3 = Mux(queen1 === 0.U,LNU0.io.out.bits.dcOut.InstNo,Mux(queen1 === 1.U,LNU1.io.out.bits.dcOut.InstNo,Mux(queen1 === 2.U,SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo)))
-    val InstFlag2 = Mux(queen0 === 0.U,LNU0.io.out.bits.dcOut.InstFlag,Mux(queen0 === 1.U,LNU1.io.out.bits.dcOut.InstFlag,Mux(queen0 === 2.U,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag)))
-    val InstFlag3 = Mux(queen1 === 0.U,LNU0.io.out.bits.dcOut.InstFlag,Mux(queen1 === 1.U,LNU1.io.out.bits.dcOut.InstFlag,Mux(queen1 === 2.U,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag)))
-    val outvalid2 = Mux(queen0 === 0.U,LNU0.io.out.valid,Mux(queen0 === 1.U,LNU1.io.out.valid,Mux(queen0 === 2.U,SU0.io.out.valid,SU1.io.out.valid)))
-    val outvalid3 = Mux(queen1 === 0.U,LNU0.io.out.valid,Mux(queen1 === 1.U,LNU1.io.out.valid,Mux(queen1 === 2.U,SU0.io.out.valid,SU1.io.out.valid)))
-    val queen = Mux(outvalid2,Mux(outvalid3,Mux(notafter(InstNo2,InstNo3,InstFlag2,InstFlag3),queen0,queen1),queen0),queen1)
+    // //connect 2 way out 
+    // val commit_operator = WireInit(0.U.asTypeOf(Vec(4,Bool())))
+    // val winner0 = Mux(LNU0.io.out.valid,Mux(LNU1.io.out.valid,Mux(notafter(LNU0.io.out.bits.dcOut.InstNo,LNU1.io.out.bits.dcOut.InstNo,LNU0.io.out.bits.dcOut.InstFlag,LNU1.io.out.bits.dcOut.InstFlag),0.U,1.U),0.U),1.U)
+    // val winner1 = Mux(SU0.io.out.valid,Mux(SU1.io.out.valid,Mux(notafter(SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag),2.U,3.U),2.U),3.U)
+    // val InstNo0 = Mux(winner0 === 0.U,LNU0.io.out.bits.dcOut.InstNo,LNU1.io.out.bits.dcOut.InstNo)
+    // val InstNo1 = Mux(winner1 === 2.U,SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo)
+    // val InstFlag0 = Mux(winner0 === 0.U,LNU0.io.out.bits.dcOut.InstFlag,LNU1.io.out.bits.dcOut.InstFlag)
+    // val InstFlag1 = Mux(winner1 === 2.U,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag)
+    // val outvalid0 = Mux(winner0 === 0.U,LNU0.io.out.valid,LNU1.io.out.valid)
+    // val outvalid1 = Mux(winner1 === 2.U,SU0.io.out.valid,SU1.io.out.valid)
+    // val king  = Mux(outvalid0,Mux(outvalid1,Mux(notafter(InstNo0,InstNo1,InstFlag0,InstFlag1),winner0,winner1),winner0),winner1) 
+    // val queen0= Mux(king === winner0,winner1,winner0)
+    // val queen1= Mux(king === winner0,Mux(king === 0.U,1.U,0.U),Mux(king === 2.U,3.U,2.U))
+    // val InstNo2 = Mux(queen0 === 0.U,LNU0.io.out.bits.dcOut.InstNo,Mux(queen0 === 1.U,LNU1.io.out.bits.dcOut.InstNo,Mux(queen0 === 2.U,SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo)))
+    // val InstNo3 = Mux(queen1 === 0.U,LNU0.io.out.bits.dcOut.InstNo,Mux(queen1 === 1.U,LNU1.io.out.bits.dcOut.InstNo,Mux(queen1 === 2.U,SU0.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo)))
+    // val InstFlag2 = Mux(queen0 === 0.U,LNU0.io.out.bits.dcOut.InstFlag,Mux(queen0 === 1.U,LNU1.io.out.bits.dcOut.InstFlag,Mux(queen0 === 2.U,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag)))
+    // val InstFlag3 = Mux(queen1 === 0.U,LNU0.io.out.bits.dcOut.InstFlag,Mux(queen1 === 1.U,LNU1.io.out.bits.dcOut.InstFlag,Mux(queen1 === 2.U,SU0.io.out.bits.dcOut.InstFlag,SU1.io.out.bits.dcOut.InstFlag)))
+    // val outvalid2 = Mux(queen0 === 0.U,LNU0.io.out.valid,Mux(queen0 === 1.U,LNU1.io.out.valid,Mux(queen0 === 2.U,SU0.io.out.valid,SU1.io.out.valid)))
+    // val outvalid3 = Mux(queen1 === 0.U,LNU0.io.out.valid,Mux(queen1 === 1.U,LNU1.io.out.valid,Mux(queen1 === 2.U,SU0.io.out.valid,SU1.io.out.valid)))
+    // val queen = Mux(outvalid2,Mux(outvalid3,Mux(notafter(InstNo2,InstNo3,InstFlag2,InstFlag3),queen0,queen1),queen0),queen1)
 
-    when(king === 0.U){
+    // when(king === 0.U){
+    //   io.out(0).bits := LNU0.io.out.bits.res
+    //   io.dcOut(0):= LNU0.io.out.bits.dcOut
+    //   io.out(0).valid:= LNU0.io.out.valid
+    //   LNU0.io.out.ready := io.out(0).ready
+    // }.elsewhen(king === 1.U){
+    //   io.out(0).bits := LNU1.io.out.bits.res
+    //   io.dcOut(0):= LNU1.io.out.bits.dcOut
+    //   io.out(0).valid:= LNU1.io.out.valid
+    //   LNU1.io.out.ready := io.out(0).ready
+    // }.elsewhen(king === 2.U){
+    //   io.out(0).bits := SU0.io.out.bits.res
+    //   io.dcOut(0):= SU0.io.out.bits.dcOut
+    //   io.out(0).valid:= SU0.io.out.valid
+    //   SU0.io.out.ready := io.out(0).ready
+    // }.otherwise{
+    //   io.out(0).bits := SU1.io.out.bits.res
+    //   io.dcOut(0):= SU1.io.out.bits.dcOut
+    //   io.out(0).valid:= SU1.io.out.valid
+    //   SU1.io.out.ready := io.out(0).ready
+    // }
+    // when(queen === 0.U){
+    //   io.out(1).bits := LNU0.io.out.bits.res
+    //   io.dcOut(1):= LNU0.io.out.bits.dcOut
+    //   io.out(1).valid:= LNU0.io.out.valid
+    //   LNU0.io.out.ready := io.out(1).ready
+    // }.elsewhen(queen === 1.U){
+    //   io.out(1).bits := LNU1.io.out.bits.res
+    //   io.dcOut(1):= LNU1.io.out.bits.dcOut
+    //   io.out(1).valid:= LNU1.io.out.valid
+    //   LNU1.io.out.ready := io.out(1).ready
+    // }.elsewhen(queen === 2.U){
+    //   io.out(1).bits := SU0.io.out.bits.res
+    //   io.dcOut(1):= SU0.io.out.bits.dcOut
+    //   io.out(1).valid:= SU0.io.out.valid
+    //   SU0.io.out.ready := io.out(1).ready
+    // }.otherwise{
+    //   io.out(1).bits := SU1.io.out.bits.res
+    //   io.dcOut(1):= SU1.io.out.bits.dcOut
+    //   io.out(1).valid:= SU1.io.out.valid
+    //   SU1.io.out.ready := io.out(1).ready
+    // }
+    // Debug("[SNNU] king %x queen %x\n", king, queen)
+    for(i <- 0 to 1){
+      io.out(i).bits := DontCare
+    }
+    when(LNU0.io.out.bits.dcOut.ctrl.fuType === io.dcIn(0).ctrl.fuType && LNU0.io.out.valid && io.in(0).valid){
       io.out(0).bits := LNU0.io.out.bits.res
       io.dcOut(0):= LNU0.io.out.bits.dcOut
       io.out(0).valid:= LNU0.io.out.valid
-    }.elsewhen(king === 1.U){
+      LNU0.io.out.ready := true.B// io.out(0).ready
+    }.elsewhen(LNU1.io.out.bits.dcOut.ctrl.fuType === io.dcIn(0).ctrl.fuType && LNU1.io.out.valid && io.in(0).valid){
       io.out(0).bits := LNU1.io.out.bits.res
       io.dcOut(0):= LNU1.io.out.bits.dcOut
       io.out(0).valid:= LNU1.io.out.valid
-    }.elsewhen(king === 2.U){
+      LNU1.io.out.ready := true.B// io.out(0).ready
+    }.elsewhen(SU0.io.out.bits.dcOut.ctrl.fuType === io.dcIn(0).ctrl.fuType && SU0.io.out.valid && io.in(0).valid){
       io.out(0).bits := SU0.io.out.bits.res
       io.dcOut(0):= SU0.io.out.bits.dcOut
       io.out(0).valid:= SU0.io.out.valid
-    }.otherwise{
+      SU0.io.out.ready := true.B//io.out(0).ready
+    }.elsewhen(SU1.io.out.bits.dcOut.ctrl.fuType === io.dcIn(0).ctrl.fuType && SU1.io.out.valid && io.in(0).valid){
       io.out(0).bits := SU1.io.out.bits.res
       io.dcOut(0):= SU1.io.out.bits.dcOut
       io.out(0).valid:= SU1.io.out.valid
+      SU1.io.out.ready := true.B//io.out(0).ready
     }
-    when(queen === 0.U){
+    //.otherwise{
+    //   io.out(0).bits := 0.U
+    //   io.dcOut(0):= 0.U.asTypeOf(new DecodeIO)
+    //   io.out(0).valid:= false.B
+    // }
+    
+    when(LNU0.io.out.bits.dcOut.ctrl.fuType === io.dcIn(1).ctrl.fuType && LNU0.io.out.valid && io.in(1).valid){
       io.out(1).bits := LNU0.io.out.bits.res
       io.dcOut(1):= LNU0.io.out.bits.dcOut
       io.out(1).valid:= LNU0.io.out.valid
-    }.elsewhen(queen === 1.U){
+      LNU0.io.out.ready := true.B//io.out(1).ready
+    }.elsewhen(LNU1.io.out.bits.dcOut.ctrl.fuType === io.dcIn(1).ctrl.fuType && LNU1.io.out.valid && io.in(1).valid){
       io.out(1).bits := LNU1.io.out.bits.res
       io.dcOut(1):= LNU1.io.out.bits.dcOut
       io.out(1).valid:= LNU1.io.out.valid
-    }.elsewhen(queen === 2.U){
+      LNU1.io.out.ready := io.out(1).ready
+    }.elsewhen(SU0.io.out.bits.dcOut.ctrl.fuType === io.dcIn(1).ctrl.fuType && SU0.io.out.valid && io.in(1).valid){
       io.out(1).bits := SU0.io.out.bits.res
       io.dcOut(1):= SU0.io.out.bits.dcOut
       io.out(1).valid:= SU0.io.out.valid
-    }.otherwise{
+      SU0.io.out.ready := true.B//io.out(1).ready
+    }.elsewhen(SU1.io.out.bits.dcOut.ctrl.fuType === io.dcIn(1).ctrl.fuType && SU1.io.out.valid && io.in(1).valid){
       io.out(1).bits := SU1.io.out.bits.res
       io.dcOut(1):= SU1.io.out.bits.dcOut
       io.out(1).valid:= SU1.io.out.valid
+      SU1.io.out.ready := true.B// io.out(1).ready
     }
-    Debug("[SNNU] king %x queen %x\n", king, queen)
-    Debug("[SNNU] LNU0READY %x LNU1READY %x SU0READY %x SU1READY %x\n", LNU0.io.in.ready, LNU1.io.in.ready, SU0.io.in.ready, SU1.io.in.ready)
+    // .otherwise{
+    //   io.out(1).bits := 0.U
+    //   io.dcOut(1):= 0.U.asTypeOf(new DecodeIO)
+    //   io.out(1).valid:= false.B
+    // }
 
+    Debug("[SNNU] LNU0READY %x LNU1READY %x SU0READY %x SU1READY %x\n", LNU0.io.in.ready, LNU1.io.in.ready, SU0.io.in.ready, SU1.io.in.ready)
+    Debug("[SNNU] io.out(0).ready %x io.out(1).ready %x\n", io.out(0).ready, io.out(1).ready)
     Debug("[SNNU] LNU0VALID %x SU0VALID %x LNU0PC %x SU0PC %x LNU0InstNo %x SU0InstNo %x \n", LNU0_valid,SU0_valid, LNU0.io.out.bits.dcOut.cf.pc,SU0.io.out.bits.dcOut.cf.pc,LNU0.io.out.bits.dcOut.InstNo,SU0.io.out.bits.dcOut.InstNo)
     Debug("[SNNU] LNU1VALID %x SU1VALID %x LNU1PC %x SU1PC %x LNU1InstNo %x SU1InstNo %x \n", LNU1_valid,SU1_valid, LNU1.io.out.bits.dcOut.cf.pc,SU1.io.out.bits.dcOut.cf.pc,LNU1.io.out.bits.dcOut.InstNo,SU1.io.out.bits.dcOut.InstNo)
 }
