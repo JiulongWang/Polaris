@@ -5,77 +5,107 @@ import chisel3.util._
 
 import utils._
 
-class SRF_IO extends NutCoreBundle {
-    // val in = Flipped(Decoupled(new Bundle{
-    //     val dcIn = new DecodeIO
-    //     val SCtrl = new SCtrlIO
-    // }))
-
-    // val out = Decoupled(new Bundle{
-    //     val res = Output(UInt(XLEN.W))
-    //     val dcOut = new DecodeIO
-    // })
-    val dcIn = Flipped(new DecodeIO)
-    val SCtrl = Flipped(new SCtrlIO)
-    val SRF4 = Vec(4, Output(UInt(64.W)))
-    val sumres = Input(UInt(64.W))
-    val sumvalid = Input(Bool())
-}
-
-class SRF_NEW extends NutCoreModule {
-    val io = IO(new SRF_IO)
-
-    val srf = new SRegFile
-    // val outdc = Reg(new Bundle{val dcOut = new DecodeIO; val res = Output(UInt(64.W))})
-
-    // val outvalid = RegInit(false.B)
-    // outdc.dcOut := 0.U.asTypeOf(new DecodeIO)
-    // outdc.res := 0.U(64.W)
-    when(io.SCtrl.isSvr){
-        srf.write(SRFAddr.TAU, ZeroExt(io.SCtrl.DIn1(SRFAddr.TAU), 64))
-        srf.write(SRFAddr.VR, ZeroExt(io.SCtrl.DIn1(SRFAddr.VR), 64))
-        srf.write(SRFAddr.LR, ZeroExt(io.SCtrl.DIn1(SRFAddr.LR), 64))
-        srf.write(SRFAddr.ACC, io.dcIn.data.src2 )
-    }.elsewhen(io.SCtrl.isSum && io.SCtrl.hasAcc){
-        srf.write(SRFAddr.ACC, io.sumres)
-    }
-    for(i <- 0 until( XLEN/ 16)){
-        io.SRF4(i) := srf.read(i.U)
-        Debug("[SNNISU] srf(%d) %x\n", i.U, io.SRF4(i))
-    }
-}
-
 class SNNISU_NEW extends NutCoreModule{
     val io = IO(new Bundle{
-        val srf4In = Vec(4, Input(UInt(64.W)))
-        val dcIn = Flipped(new DecodeIO)
-        val SCtrl = new SCtrlIO
-        val dcOut = new DecodeIO
+        val validIn = Vec(2, Input(Bool()))
+        val dcIn = Vec(2, Flipped(new DecodeIO))
+        val SCtrl = Vec(2, new SCtrlIO)
+        val dcOut = Vec(2, new DecodeIO)
+        val LNUsumres = Input(UInt(64.W))
+        val LNUvalid = Input(Bool())
     })
 
-    val src1  = io.dcIn.data.src1
-    val src2  = io.dcIn.data.src2
-    val func  = io.dcIn.ctrl.fuOpType
+
+    def notafter(ptr1:UInt,ptr2:UInt,flag1:UInt,flag2:UInt):Bool= (ptr1 <= ptr2) && (flag1 === flag2) || (ptr1 > ptr2) && (flag1 =/= flag2)
+    
+    val src01  = io.dcIn(0).data.src1
+    val src02  = io.dcIn(0).data.src2
+    val func0  = io.dcIn(0).ctrl.fuOpType
+    val src11  = io.dcIn(1).data.src1
+    val src12  = io.dcIn(1).data.src2
+    val func1  = io.dcIn(1).ctrl.fuOpType
 
     io.dcOut := io.dcIn
 
-    io.SCtrl.isNup  := func === SNNOpType.nup
-    io.SCtrl.isBpo  := func === SNNOpType.bpo 
-    io.SCtrl.isExp  := func === SNNOpType.exp 
-    io.SCtrl.isTdr  := func === SNNOpType.tdr 
-    io.SCtrl.isSum  := func === SNNOpType.sum 
-    io.SCtrl.isSvr  := func === SNNOpType.svr 
-    io.SCtrl.hasTs  := func === SNNOpType.nup && io.dcIn.cf.instr(25) === "b1".U
-    io.SCtrl.hasAcc := func === SNNOpType.sum && io.dcIn.cf.instr(25) === "b1".U
-    
+    val srf = new SRegFile
+
+    io.SCtrl(0).SRF4(3) := DontCare
+    io.SCtrl(1).SRF4(3) := DontCare
+
+    io.SCtrl(0).isNup  := func0 === SNNOpType.nup
+    io.SCtrl(0).isBpo  := func0 === SNNOpType.bpo 
+    io.SCtrl(0).isExp  := func0 === SNNOpType.exp 
+    io.SCtrl(0).isTdr  := func0 === SNNOpType.tdr 
+    io.SCtrl(0).isSum  := func0 === SNNOpType.sum 
+    io.SCtrl(0).isSvr  := func0 === SNNOpType.svr 
+    io.SCtrl(0).hasTs  := func0 === SNNOpType.nup && io.dcIn(0).cf.instr(25) === "b1".U
+    io.SCtrl(0).hasAcc := func0 === SNNOpType.sum && io.dcIn(0).cf.instr(25) === "b1".U
+    io.SCtrl(1).isNup  := func1 === SNNOpType.nup
+    io.SCtrl(1).isBpo  := func1 === SNNOpType.bpo 
+    io.SCtrl(1).isExp  := func1 === SNNOpType.exp 
+    io.SCtrl(1).isTdr  := func1 === SNNOpType.tdr 
+    io.SCtrl(1).isSum  := func1 === SNNOpType.sum 
+    io.SCtrl(1).isSvr  := func1 === SNNOpType.svr 
+    io.SCtrl(1).hasTs  := func1 === SNNOpType.nup && io.dcIn(1).cf.instr(25) === "b1".U
+    io.SCtrl(1).hasAcc := func1 === SNNOpType.sum && io.dcIn(1).cf.instr(25) === "b1".U
     val len = 16
-    
     for(i <- 0 until( XLEN/ len)){
-        io.SCtrl.DIn1(i) := src1(len * i + len - 1, len * i)
-        io.SCtrl.DIn2(i) := src2(len * i + len - 1, len * i)
-        // io.SCtrl.SRF4(i) := srf.read(i.U)
-        io.SCtrl.SRF4(i) := io.srf4In(i)
-        Debug("DIN1(%d) %x DIN2(%d) %x SRF4(%d) %x\n", i.U, io.SCtrl.DIn1(i), i.U, io.SCtrl.DIn2(i), i.U, io.SCtrl.SRF4(i))
+        io.SCtrl(0).DIn1(i) := src01(len * i + len - 1, len * i)
+        io.SCtrl(0).DIn2(i) := src02(len * i + len - 1, len * i)
+        io.SCtrl(1).DIn1(i) := src11(len * i + len - 1, len * i)
+        io.SCtrl(1).DIn2(i) := src12(len * i + len - 1, len * i)
+        Debug("DIN01(%d) %x DIN02(%d) %x SRF04(%d) %x\n", i.U, io.SCtrl(0).DIn1(i), i.U, io.SCtrl(0).DIn2(i), i.U, io.SCtrl(0).SRF4(i))
+        Debug("DIN11(%d) %x DIN12(%d) %x SRF14(%d) %x\n", i.U, io.SCtrl(1).DIn1(i), i.U, io.SCtrl(1).DIn2(i), i.U, io.SCtrl(1).SRF4(i))
+    }
+    val depender = Mux(notafter(io.dcIn(0).InstNo, io.dcIn(1).InstNo, io.dcIn(0).InstFlag, io.dcIn(1).InstFlag), 0.U, 1.U) 
+    val dependee = Mux(depender === 0.U, 1.U, 0.U)
+    val acc_depend = (io.SCtrl(dependee).isSum && io.SCtrl(dependee).hasAcc && io.validIn(dependee)) && (io.SCtrl(depender).isSum && io.SCtrl(depender).hasAcc && io.validIn(depender)) 
+    val svr_depend = (io.SCtrl(dependee).isSum && io.SCtrl(dependee).hasAcc && io.validIn(dependee)) && (io.SCtrl(depender).isSvr && io.validIn(depender))
+    when(acc_depend){
+        val adder_depender = WireInit(0.U.asTypeOf(Vec(4, UInt(16.W))))
+        val adder_dependee = WireInit(0.U.asTypeOf(Vec(4, UInt(16.W))))
+        for(i <- 0 until 4){
+            adder_depender(i) := Mux(io.SCtrl(depender).DIn2(i) === 1.U, io.SCtrl(depender).DIn1(i), 0.U)
+            adder_dependee(i) := Mux(io.SCtrl(dependee).DIn2(i) === 1.U, io.SCtrl(dependee).DIn1(i), 0.U)
+        }
+        val toDependee = adder_depender.reduce(_ + _) + srf.read(SRFAddr.ACC)
+        val toSRF = toDependee + adder_dependee.reduce(_ + _)
+        io.SCtrl(dependee).SRF4(3) := toDependee
+        io.SCtrl(depender).SRF4(3) := srf.read(SRFAddr.ACC)
+        srf.write(SRFAddr.ACC, toSRF)
+    }.elsewhen(svr_depend){
+        io.SCtrl(dependee).SRF4(3) := io.dcIn(depender).data.src2
+        io.SCtrl(depender).SRF4(3) := io.dcIn(depender).data.src2
+        srf.write(SRFAddr.ACC, io.dcIn(depender).data.src2)
+    }.otherwise{
+        io.SCtrl(0).SRF4(3) := srf.read(SRFAddr.ACC)
+        io.SCtrl(1).SRF4(3) := srf.read(SRFAddr.ACC)
+    }
+
+    when(io.SCtrl(0).isSvr){
+        srf.write(SRFAddr.ACC, src02)
+        srf.write(SRFAddr.VR, ZeroExt(src01(15, 0), 64))
+        srf.write(SRFAddr.LR, ZeroExt(src01(31, 16), 64))
+        srf.write(SRFAddr.TAU, ZeroExt(src01(47, 32), 64))
+    }
+    when(io.SCtrl(1).isSvr){
+        srf.write(SRFAddr.ACC, src12)
+        srf.write(SRFAddr.VR, ZeroExt(src01(15, 0), 64))
+        srf.write(SRFAddr.LR, ZeroExt(src01(31, 16), 64))
+        srf.write(SRFAddr.TAU, ZeroExt(src01(47, 32), 64))
+    }
+
+    when(io.LNUvalid){
+        srf.write(SRFAddr.ACC, io.LNUsumres)
+    }
+
+    for(i <- 0 until 2){
+        io.SCtrl(i).SRF4(SRFAddr.VR) := srf.read(SRFAddr.VR)
+        io.SCtrl(i).SRF4(SRFAddr.TAU) := srf.read(SRFAddr.TAU)
+        io.SCtrl(i).SRF4(SRFAddr.LR) := srf.read(SRFAddr.LR)
+    }
+    for(i <- 0 until 4){
+        Debug("[SRF] srf(%d) %x\n", 1.U, srf.read(i.U))
     }
 }
 
@@ -114,17 +144,18 @@ class LNU_NEW extends NutCoreModule{
         nu_res(0) := 1.U
     }.elsewhen(io.in.bits.SCtrl.isSum){
         val acc = io.in.bits.SCtrl.SRF4(SRFAddr.ACC)
+
         for(i <- 0 until XLEN/16){
           ksiw03(i) := Mux(io.in.bits.SCtrl.DIn2(i) === 1.U, io.in.bits.SCtrl.DIn1(i), 0.U(16.W))
           Debug("[LNU] k(%d) %x\n", i.U, ksiw03(i))
         }
-
-        sumres := Mux(io.in.bits.SCtrl.hasAcc && RegNext(io.in.valid), ksiw03.reduce(_ + _) + acc, ksiw03.reduce(_ + _))
+        Debug("[LNU] acc %x\n", acc)
+        sumres := Mux(io.in.bits.SCtrl.hasAcc , ksiw03.reduce(_ + _) + acc, ksiw03.reduce(_ + _))
     } 
     io.out.bits.res := Mux(io.in.bits.SCtrl.isSum, sumres, nu_res.reverse.reduce(Cat(_,_))) 
 
 
-    io.in.ready := !io.in.valid || io.out.fire()
+    io.in.ready := !io.in.valid
     io.out.valid :=  io.in.valid 
 
     io.out.bits.dcOut :=  io.in.bits.dcIn

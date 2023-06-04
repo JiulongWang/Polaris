@@ -283,6 +283,12 @@ class new_SIMD_EXU(implicit val p: NutCoreConfig) extends NutCoreModule with Has
     snnu.io.out(0).ready := io.out(snnuidx).ready
     snnu.io.out(1).ready := io.out(snnu1idx).ready
     snnu.io.flush := io.flush
+    val snnu_firststage_fire = Wire(Bool())
+    snnu_firststage_fire := snnu.io.FirstStageFire(0)
+    BoringUtils.addSource(snnu_firststage_fire, "snnu_fs_fire")
+    val snnu1_firststage_fire = Wire(Bool())
+    snnu1_firststage_fire := snnu.io.FirstStageFire(1)
+    BoringUtils.addSource(snnu1_firststage_fire, "snnu1_fs_fire")
     
     io.out(snnuidx).bits.decode <> snnu.io.dcOut(0)
     io.out(snnu1idx).bits.decode <> snnu.io.dcOut(1)
@@ -301,6 +307,9 @@ class new_SIMD_EXU(implicit val p: NutCoreConfig) extends NutCoreModule with Has
     snnu.io.out.ready := io.out(snnuidx).ready
     snnu.io.dcIn := io.in(snnuidx).bits
     snnu.io.flush := io.flush
+    val snnu_firststage_fire = Wire(Bool())
+    snnu_firststage_fire := snnu.io.FirstStageFire(0)
+    BoringUtils.addSource(snnu_firststage_fire, "snnu_fs_fire")
     io.out(snnuidx).bits.decode <> snnu.io.dcOut
     io.out(snnuidx).bits.decode.ctrl.rfWen := snnu.io.dcOut.ctrl.rfWen
     io.out(FuType.snnu).valid := snnu.io.out.valid
